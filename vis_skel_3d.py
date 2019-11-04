@@ -92,6 +92,13 @@ def _draw2dseg(ax, annot, idx1, idx2, c='r', alpha=1):
         alpha=alpha)
 
 
+def get_joint(joint_names, skeleton):
+    Joint = {}
+    for idx, name in enumerate(joint_names):
+        Joint[name] = skel[idx]
+        print (name, " : ", Joint[name])
+    return Joint
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', required=True, help='Path to dataset install')
@@ -127,6 +134,17 @@ if __name__ == '__main__':
     obj_root = os.path.join(args.root, 'Object_models')
     obj_trans_root = os.path.join(args.root, 'Object_6D_pose_annotation_v1_1')
     skel = get_skeleton(sample, skeleton_root)[reorder_idx]
+
+    # hand_angles = {}
+    # for f_idx, finger in enumerate(finger_names):
+
+    #     for a_idx, angle in enumerate(angle_names):
+
+    #         if angle == "MCP":
+    #             vector_1 = 
+        
+            
+
     if args.obj is not None:
         # Load object mesh
         object_infos = load_objects(obj_root)
@@ -156,6 +174,49 @@ if __name__ == '__main__':
         skel_hom.transpose()).transpose()[:, :3].astype(np.float32)
     # print ("Skeleton_cam : ", skel_camcoords)
     # print ("Skeleton : ", skel_camcoords.shape)
+
+    joint_names = ["Wrist", "TMCP", "IMCP", "MMCP", "RMCP", "PMCP", "TPIP",
+            "TDIP", "TTIP", "IPIP", "IDIP", "ITIP", "MPIP", "MDIP", "MTIP",
+            "RPIP", "RDIP", "RTIP", "PPIP", "PDIP", "PTIP"]
+
+    hand_conf = get_joint(joint_names, skel)
+
+    finger_names = ["T", "I", "M", "R", "P"]
+    global_joint_names = ["MCP", "PIP", "DIP", "TIP"]
+    angle_names = ["MCP", "PIP", "DIP"]
+
+    finger_pos = [np.empty((0, 3))] * len(finger_names)
+    # print (finger_pos)
+    for i, finger in enumerate(finger_names):
+        finger_pos[i] = np.vstack((finger_pos[i], hand_conf["Wrist"]))
+        j_name = finger + "MCP"
+        # print (j_name)
+        finger_pos[i] = np.vstack((finger_pos[i], hand_conf[j_name]))
+        j_name = finger + "PIP"
+        # print (j_name)
+        finger_pos[i] = np.vstack((finger_pos[i], hand_conf[j_name]))
+        j_name = finger + "DIP"
+        # print (j_name)
+        finger_pos[i] = np.vstack((finger_pos[i], hand_conf[j_name]))
+        j_name = finger + "TIP"
+        print (j_name)
+        finger_pos[i] = np.vstack((finger_pos[i], hand_conf[j_name]))
+        print (finger_pos[i].shape)
+    print (finger_pos[0])
+    # print (finger_pos[0][:, 0])
+    
+    print (hand_conf["Wrist"])
+
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    for finger in finger_pos:
+        ax.plot(finger[:, 0], finger[:, 1], finger[:, 2])
+    
+    plt.show()
+    exit(0)
 
     skel_hom2d = np.array(cam_intr).dot(skel_camcoords.transpose()).transpose()
     skel_proj = (skel_hom2d / skel_hom2d[:, 2:])[:, :2]
