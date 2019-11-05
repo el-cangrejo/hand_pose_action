@@ -1,4 +1,3 @@
-from math import sqrt
 import argparse
 import os
 import numpy as np
@@ -112,33 +111,17 @@ def draw_plane(ax, joints, clr='b', alpha=0.3):
     ax.plot_surface(X, Y, Z, color=clr, alpha=alpha)
 
 def draw_triangle(ax, joints, clr='b', alpha=0.3):
-    collection = Poly3DCollection(joints, alpha=alpha, linewidths=0)
+    collection = Poly3DCollection(joints, alpha=alpha, linewidths=1)
     collection.set_facecolor(clr)
     ax.add_collection3d(collection)
 
-def draw_arc(ax, pt1, pt2, ptc):
-    line_x = np.array([ptc, pt2])
-    line_y = np.array([ptc, pt1])
-    print (line_x)
-    print (line_y)
-    print (intersection_exists(line_x[0], line_x[1], line_x[0], 1))
-    inter_points_1 = intersection_points(line_x[0], line_x[1], line_x[0], 10)
-    inter_points_2 = intersection_points(line_y[0], line_y[1], line_y[0], 10)
-
-    print (inter_points_1)
-    print (inter_points_2)
-
-    t = np.linspace(0, 1, 100)
-    phi = np.pi / 10
-    theta = t * phi 
-
-    arc = (np.expand_dims((np.sin((1 - t) * phi) / np.sin(phi)), axis=0).T) * np.expand_dims(inter_points_1[0], axis=0) + (np.expand_dims((np.sin(t * phi) / np.sin(phi)), axis=0).T) * np.expand_dims(inter_points_2[0], axis=0)
-
-    # print (arc.shape)
-    # print (inter_points[0])
-    # print (inter_points.shape)
-    # print (arc)
-    ax.plot(arc[:, 0], arc[:, 1], arc[:, 2], linewidth=3, color='black')
+def draw_arc(ax, pt1, pt2, pt3):
+    angle_plot = get_angle_plot(line_1, line_2, 1)
+    angle_text = get_angle_text(angle_plot) 
+    # Gets the arguments to be passed to ax.text as a list to display the angle
+    # value besides the arc
+    ax.add_patch(angle_plot) # To display the angle arc
+    ax.text(*angle_text) # To display the angle value
 
 def get_angle_plot(line1, line2, offset = 1, color = None, 
                    origin = [0,0], len_x_axis = 1, 
@@ -162,24 +145,6 @@ def get_angle_plot(line1, line2, offset = 1, color = None,
                0, theta1, theta2, color=color, 
                label = str(angle)+u"\u00b0")
 
-def intersection_points(pt1, pt2, ptc, r):
-    a = (pt2[0] - pt1[0]) ** 2 + (pt2[1] - pt1[1]) ** 2 + (pt2[2] - pt1[2]) ** 2
-    b = -2 * ((pt2[0] - pt1[0]) * (ptc[0] - pt1[0]) + (pt2[1] - pt1[1]) * (ptc[1] - pt1[1]) + (pt2[2] - pt1[2]) * (ptc[2] - pt1[2]))
-    c = (ptc[0] - pt1[0]) ** 2 + (ptc[1] - pt1[1]) ** 2 + (ptc[2] - pt1[2]) ** 2 - r ** 2
-
-    t1 = (-b + sqrt(b ** 2 - 4 * a * c)) / (2 * a)
-    t2 = (-b - sqrt(b ** 2 - 4 * a * c)) / (2 * a)
-    return np.array([pt1 + t1 * (pt2 - pt1), pt1 + t2 * (pt2 - pt1)])
-
-def intersection_exists(pt1, pt2, ptc, r):
-    a = (pt2[0] - pt1[0]) ** 2 + (pt2[1] - pt1[1]) ** 2 + (pt2[2] - pt1[2]) ** 2
-    
-    b = -2 * ((pt2[0] - pt1[0]) * (ptc[0] - pt1[0]) + (pt2[1] - pt1[1]) * (ptc[1] - pt1[1]) + (pt2[2] - pt1[2]) * (ptc[2] - pt1[2]))
-
-    c = (ptc[0] - pt1[0]) ** 2 + (ptc[1] - pt1[1]) ** 2 + (ptc[2] - pt1[2]) ** 2 - r ** 2
-
-    return (b ** 2 - a * c) > 0 
-
 if __name__ == '__main__':
     args = parse_args()
     sample = {
@@ -192,61 +157,52 @@ if __name__ == '__main__':
     print('Loading sample {}'.format(sample))
 
     joint_names, finger_names, global_joint_names, angle_names = get_names()
+    fig, ax = get_figure()
 
     skeleton_root = os.path.join(args.root, 'Hand_pose_annotation_v1')
     skel_trajectory = get_skeleton(sample, skeleton_root)
     
-    skel = skel_trajectory[0]
-    hand_conf = get_joint(joint_names, skel)
-    finger_pos = get_finger_pos(hand_conf, finger_names)
 
-    fig, ax = get_figure()
+    for skel_idx in range(skel_trajectory.shape[0]):
+        skel = skel_trajectory[skel_idx]
+        hand_conf = get_joint(joint_names, skel)
+        finger_pos = get_finger_pos(hand_conf, finger_names)
 
-    for finger in finger_pos:
-        ax.plot(finger[:, 0], finger[:, 1], finger[:, 2])
-        ax.scatter3D(finger[:, 0], finger[:, 1], finger[:, 2])
 
-    plane_points = [[hand_conf["Wrist"],
-                    hand_conf["IMCP"], 
-                    hand_conf["MMCP"], 
-                    hand_conf["RMCP"], 
-                    hand_conf["PMCP"]]]
-    # draw_plane(ax, plane_points, clr='b')
-    draw_triangle(ax, plane_points, clr='b', alpha=0.5)
+        for finger in finger_pos:
+            ax.plot(finger[:, 0], finger[:, 1], finger[:, 2])
+            ax.scatter3D(finger[:, 0], finger[:, 1], finger[:, 2])
 
-    plane_points = [[hand_conf["Wrist"],
-                    hand_conf["IMCP"], 
-                    hand_conf["TMCP"]]]
-    # draw_plane(ax, plane_points, clr='r')
-    draw_triangle(ax, plane_points, clr='g', alpha=0.5)
+        plane_points = [[hand_conf["Wrist"],
+                        hand_conf["IMCP"], 
+                        hand_conf["PMCP"]]]
+        # draw_plane(ax, plane_points, clr='b')
+        draw_triangle(ax, plane_points, clr='b', alpha=0.5)
 
-    plane_points = [[hand_conf["IMCP"],
-                    hand_conf["TMCP"], 
-                    hand_conf["TPIP"]]]
-    # draw_plane(ax, plane_points, clr='r')
-    draw_triangle(ax, plane_points, clr='r', alpha=0.5)
+        plane_points = [[hand_conf["Wrist"],
+                        hand_conf["IMCP"], 
+                        hand_conf["TMCP"]]]
+        # draw_plane(ax, plane_points, clr='r')
+        draw_triangle(ax, plane_points, clr='g', alpha=0.5)
 
-    draw_arc(ax, hand_conf["Wrist"], hand_conf["PPIP"], hand_conf["PMCP"])
-    draw_arc(ax, hand_conf["Wrist"], hand_conf["RPIP"], hand_conf["RMCP"])
-    draw_arc(ax, hand_conf["Wrist"], hand_conf["MPIP"], hand_conf["MMCP"])
-    draw_arc(ax, hand_conf["Wrist"], hand_conf["IPIP"], hand_conf["IMCP"])
-    draw_arc(ax, hand_conf["Wrist"], hand_conf["TPIP"], hand_conf["TMCP"])
-    
-    draw_arc(ax, hand_conf["TMCP"], hand_conf["IPIP"], hand_conf["IMCP"])
-    draw_arc(ax, hand_conf["TMCP"], hand_conf["TDIP"], hand_conf["TPIP"])
-    # angle_plot = get_angle_plot(line_1, line_2, 1)
-    # angle_text = get_angle_text(angle_plot) 
-    # # Gets the arguments to be passed to ax.text as a list to display the angle value besides the arc
+        plane_points = [[hand_conf["IMCP"],
+                        hand_conf["TMCP"], 
+                        hand_conf["TPIP"]]]
+        # draw_plane(ax, plane_points, clr='r')
+        draw_triangle(ax, plane_points, clr='r', alpha=0.5)
 
-    # ax.scatter3D(inter_points_1[:, 0], inter_points_1[:, 1], inter_points_1[:, 2], c='r')
-    # ax.scatter3D(inter_points_2[:, 0], inter_points_2[:, 1], inter_points_2[:, 2], c='r')
-    # ax.add_patch(angle_plot) # To display the angle arc
-    # ax.text(*angle_text) # To display the angle value
-    
-    # plt.axis('off')
-    # for angle in range(0, 360):
-    #     ax.view_init(30, angle)
-    #     plt.draw()
-    #     plt.pause(.001)
-    # ax.set_aspect('equal')
-    plt.show()
+        # angle_plot = get_angle_plot(line_1, line_2, 1)
+        # angle_text = get_angle_text(angle_plot) 
+        # # Gets the arguments to be passed to ax.text as a list to display the angle value besides the arc
+
+        # ax.add_patch(angle_plot) # To display the angle arc
+        # ax.text(*angle_text) # To display the angle value
+        
+        # for angle in range(0, 360):
+        angle = 90
+        ax.view_init(30, angle)
+        plt.draw()
+        plt.pause(.1)
+        plt.axis('off')
+        plt.cla()
+        # plt.show()
