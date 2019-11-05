@@ -126,3 +126,7 @@ Authors thank Gabriel Garcia for object model acquisition and [Yana Hasson](http
 <a name="refs"></a>
 
 [1] *First-Person Hand Action Benchmark with RGB-D Videos and 3D Hand Pose Annotations*, Guillermo Garcia-Hernando, Shanxin Yuan, Seungryul Baek and Tae-Kyun Kim, CVPR 2018. [arXiv](https://arxiv.org/abs/1704.02463)
+
+### Example Visualisation
+
+<img src="example_vis.png" alt="example_vis" width="400" class="center"/>
